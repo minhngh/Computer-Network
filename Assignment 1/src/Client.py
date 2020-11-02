@@ -7,6 +7,7 @@ from PIL import Image, ImageTk
 import io
 from RtpPacket import RtpPacket
 from enum import Enum
+import time
 
 class State(Enum):
     INIT = 0
@@ -113,8 +114,8 @@ class Client:
                     status_code = int(request[0].split()[1])
                     if self.sessionId == sessionId and status_code == 200:
                         if self.last_requesttype == RequestType.SETUP:
-                            self.state = State.READY
                             self.open_rtp_port()
+                            self.state = State.READY
                         elif self.last_requesttype == RequestType.PLAY:
                             threading.Thread(target = self.receive_rtp_packet).start()
                             self.state = State.PLAYING
@@ -132,8 +133,8 @@ class Client:
                     _, payload = RtpPacket.decode(data)
                     image = Image.open(io.BytesIO(payload))
                     imagetk = ImageTk.PhotoImage(image = image)
-                    
                     self.label_video.configure(image = imagetk)
+                    self.label_video.image = imagetk
             except:
                 if self.state == State.READY:
                     print('[LOG]', 'Video is paused')
