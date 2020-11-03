@@ -149,3 +149,4 @@ class Client:
         self.rtp_socket.close()
         self.rtsp_socket = None
         self.sessionId = None
+        self.is_closed = False
