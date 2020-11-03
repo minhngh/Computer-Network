@@ -59,6 +59,7 @@ class ServerWorker:
 					self.clientInfo['videoStream'] = VideoStream(filename)
 					self.state = self.READY
 				except IOError:
+					print('SETUP ERROR')
 					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
 				
 				# Generate a randomized RTSP session ID
@@ -106,6 +107,7 @@ class ServerWorker:
 			
 			# Close the RTP socket
 			self.clientInfo['rtpSocket'].close()
+			self.state = self.INIT
 			
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""

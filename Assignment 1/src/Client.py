@@ -78,6 +78,8 @@ class Client:
         self.client_host = self.rtsp_socket.getsockname()[0]
     def send_rtsp_request(self, requestType):
         self.last_requesttype = requestType
+        if self.rtsp_socket is None:
+            self.setup_connection()
         if requestType == RequestType.SETUP:
             threading.Thread(target = self.process_rtsp_request).start()
             self.cseq = 1
@@ -141,5 +143,9 @@ class Client:
                 else:
                     showinfo('info', 'The video is ended')
                 if self.is_closed:
-                    self.rtp_socket.close()
+                    self.reset()
                 break
+    def reset(self):
+        self.rtp_socket.close()
+        self.rtsp_socket = None
+        self.sessionId = None
