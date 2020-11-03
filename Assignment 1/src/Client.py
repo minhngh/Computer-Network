@@ -24,7 +24,6 @@ class Client:
     NUMBER_BUTTONS = 4
     PADX = 5
     PADY = 7
-    state = State.INIT
     RTP_BUFFER_SIZE = 15 * 1024
     RTSP_BUFFER_SIZE = 256
     def __init__(self, root, serverAddr, serverPort, rtpPort, fileName):
@@ -34,7 +33,7 @@ class Client:
         self.rtpPort = int(rtpPort)
         self.fileName = fileName
         self.sessionId = None
-        self.is_closed = False
+        self.state = State.INIT
         self.setup_connection()
         self.init_ui()
     def init_ui(self):
@@ -125,7 +124,9 @@ class Client:
                             self.state = State.READY
                         elif self.last_requesttype == RequestType.TEARDOWN:
                             self.state = State.INIT
-                            self.is_closed = True
+                            self.reset()
+                            self.display_cancel()
+                            break
 
     def receive_rtp_packet(self):
         while True:
@@ -138,15 +139,14 @@ class Client:
                     self.label_video.configure(image = imagetk)
                     self.label_video.image = imagetk
             except:
-                if self.state == State.READY:
+                if self.last_requesttype == RequestType.PAUSE:
                     print('[LOG]', 'Video is paused')
-                else:
-                    showinfo('info', 'The video is ended')
-                if self.is_closed:
-                    self.reset()
                 break
     def reset(self):
         self.rtp_socket.close()
         self.rtsp_socket = None
         self.sessionId = None
-        self.is_closed = False
+    def display_cancel(self):
+        showinfo('info', 'The video is cancelled')
+        # Clear frame being displayed
+        self.label_video.image = None
