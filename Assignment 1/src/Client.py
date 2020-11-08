@@ -38,7 +38,9 @@ class Client:
         self.init_ui()
         self.recivedFrames = []  #statistic
         self.count_received = 0        #total frame that client received
+        self.timeline = []
         self.count_sended = 0    #server will send this value
+        self.length_sended = 0   #server will send this value
     def init_ui(self):
         self.draw_frame()
         self.draw_buttons()
@@ -127,7 +129,8 @@ class Client:
                             self.state = State.READY
                         elif self.last_requesttype == RequestType.TEARDOWN:
                             self.state = State.INIT
-                            self.count_sended = int(request[-2].split()[1])
+                            self.count_sended = int(request[-3].split()[1])
+                            self.length_sended = int(request[-3].split()[1])
                             self.display_statistics()
                             self.reset()
                             self.display_cancel()
@@ -136,6 +139,7 @@ class Client:
     def receive_rtp_packet(self):
         while True:
             try:
+                start = time.time()
                 data, clientAddr = self.rtp_socket.recvfrom(Client.RTP_BUFFER_SIZE)
                 if data:
                     header, payload = RtpPacket.decode(data)
@@ -144,6 +148,8 @@ class Client:
                     imagetk = ImageTk.PhotoImage(image = image)
                     self.label_video.configure(image = imagetk)
                     self.label_video.image = imagetk
+                end = time.time()
+                self.timeline.append(end-start)
             except:
                 if self.last_requesttype == RequestType.PAUSE:
                     print('[LOG]', 'Video is paused')
@@ -160,5 +166,11 @@ class Client:
     def display_statistics(self):
         print(f'\nStatitics of Session ID = {self.sessionId}:')
         self.count_received = len(self.recivedFrames)
-
-        print(f'\tLoss rate = 1 - {self.count_received} / {self.count_sended} = {(1 - self.count_received/self.count_sended) *100}%')
+        if self.count_sended != 0:
+            print(f'\tLoss rate = 1 - {self.count_received} / {self.count_sended} = {(1 - self.count_received/self.count_sended) *100}%')
+            totaltime = sum(self.timeline)
+            print(f'\tVideo data rate = Video_size / Total time = {self.length_sended/totaltime} (bps)')
+        
+        else:
+            print('\tLoss rate = SERVER DID NOT SEND ANYTHING ')
+        print('='*50+'\n')

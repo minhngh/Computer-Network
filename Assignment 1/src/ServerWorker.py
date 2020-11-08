@@ -120,9 +120,12 @@ class ServerWorker:
 			if self.clientInfo['event'].isSet(): 
 				break 
 				
-			data = self.clientInfo['videoStream'].nextFrame()
+			data,framelength = self.clientInfo['videoStream'].nextFrame()
 			if data: 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
+				if 'framelength' in self.clientInfo:
+					self.clientInfo['framelength'].append(framelength)
+				else: self.clientInfo['framelength'] = [framelength]
 				# address = self.clientInfo['rtspSocket'][1][0]
 				# port = int(self.clientInfo['rtpPort'])
 				# self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber),(address,port))
@@ -158,8 +161,9 @@ class ServerWorker:
 		if code == self.OK_200:
 			#print("200 OK")
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
-			if 'sended' in self.clientInfo:
-				reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSended: ' + str(self.clientInfo['sended']) + '\nSession: ' + str(self.clientInfo['session']) 
+			if ('sended' in self.clientInfo) & ('framelength' in self.clientInfo):
+				length = sum(self.clientInfo['framelength'])
+				reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSended: ' + str(self.clientInfo['sended']) + '\nLength: ' + str(length) + '\nSession: ' + str(self.clientInfo['session']) 
 			
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(reply.encode())
