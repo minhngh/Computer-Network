@@ -36,6 +36,9 @@ class Client:
         self.state = State.INIT
         self.setup_connection()
         self.init_ui()
+        self.recivedFrames = []  #statistic
+        self.count_received = 0        #total frame that client received
+        self.count_sended = 0    #server will send this value
     def init_ui(self):
         self.draw_frame()
         self.draw_buttons()
@@ -124,6 +127,8 @@ class Client:
                             self.state = State.READY
                         elif self.last_requesttype == RequestType.TEARDOWN:
                             self.state = State.INIT
+                            self.count_sended = int(request[-2].split()[1])
+                            self.display_statistics()
                             self.reset()
                             self.display_cancel()
                             break
@@ -133,7 +138,8 @@ class Client:
             try:
                 data, clientAddr = self.rtp_socket.recvfrom(Client.RTP_BUFFER_SIZE)
                 if data:
-                    _, payload = RtpPacket.decode(data)
+                    header, payload = RtpPacket.decode(data)
+                    self.recivedFrames.append(header[2]*256 + header[3])
                     image = Image.open(io.BytesIO(payload))
                     imagetk = ImageTk.PhotoImage(image = image)
                     self.label_video.configure(image = imagetk)
@@ -150,3 +156,9 @@ class Client:
         showinfo('info', 'The video is cancelled')
         # Clear frame being displayed
         self.label_video.image = None
+
+    def display_statistics(self):
+        print(f'\nStatitics of Session ID = {self.sessionId}:')
+        self.count_received = len(self.recivedFrames)
+
+        print(f'\tLoss rate = 1 - {self.count_received} / {self.count_sended} = {(1 - self.count_received/self.count_sended) *100}%')

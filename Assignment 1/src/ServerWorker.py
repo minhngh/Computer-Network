@@ -103,6 +103,7 @@ class ServerWorker:
 			if self.clientInfo.get('event', False):
 				self.clientInfo['event'].set()
 			
+			self.clientInfo['sended'] = self.clientInfo['videoStream'].frameNbr()
 			self.replyRtsp(self.OK_200, seq[1])
 			
 			# Close the RTP socket
@@ -122,9 +123,9 @@ class ServerWorker:
 			data = self.clientInfo['videoStream'].nextFrame()
 			if data: 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
-				address = self.clientInfo['rtspSocket'][1][0]
-				port = int(self.clientInfo['rtpPort'])
-				self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber),(address,port))
+				# address = self.clientInfo['rtspSocket'][1][0]
+				# port = int(self.clientInfo['rtpPort'])
+				# self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber),(address,port))
 				try:
 					address = self.clientInfo['rtspSocket'][1][0]
 					port = int(self.clientInfo['rtpPort'])
@@ -157,9 +158,12 @@ class ServerWorker:
 		if code == self.OK_200:
 			#print("200 OK")
 			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSession: ' + str(self.clientInfo['session'])
+			if 'sended' in self.clientInfo:
+				reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSended: ' + str(self.clientInfo['sended']) + '\nSession: ' + str(self.clientInfo['session']) 
+			
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(reply.encode())
-		
+
 		# Error messages
 		elif code == self.FILE_NOT_FOUND_404:
 			print("404 NOT FOUND")
