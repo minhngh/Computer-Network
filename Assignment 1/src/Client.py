@@ -156,6 +156,7 @@ class Client:
                         text = '\tSTATITICS'
                         text += '\nLoss rate = {:.2f}%'.format((1 - (self.count_received-1)/sended)*100) 
                         text += '\nVideo data rate = {:.2f} (bps)'.format(size/self.timeline) 
+                        text += f'\nNumber of frames = {sended}'
                     self.statitics.config(text = text,justify = 'left')
                     # self.statitics.config(text = str(end-start))
                     payload = payload[56:]
