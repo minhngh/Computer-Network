@@ -153,9 +153,10 @@ class Client:
                     self.timeline += (end - start)
                     text = ""
                     if sended != 0:
-                        text = 'Loss rate = {:.2f}%'.format((1 - (self.count_received-1)/sended)*100) 
+                        text = '\tSTATITICS'
+                        text += '\nLoss rate = {:.2f}%'.format((1 - (self.count_received-1)/sended)*100) 
                         text += '\nVideo data rate = {:.2f} (bps)'.format(size/self.timeline) 
-                    self.statitics.config(text = text,anchor = 'e')
+                    self.statitics.config(text = text,justify = 'left')
                     # self.statitics.config(text = str(end-start))
                     payload = payload[56:]
                     image = Image.open(io.BytesIO(payload))
