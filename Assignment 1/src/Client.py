@@ -96,6 +96,8 @@ class Client:
         if self.state == State.INIT:
             self.send_rtsp_request(RequestType.SETUP)
     def click_play(self):
+        if self.state == State.INIT:
+            self.send_rtsp_request(RequestType.SETUP)
         self.type = RequestType.PLAY
         if self.state == State.READY:
             self.send_rtsp_request(RequestType.PLAY)
@@ -110,9 +112,6 @@ class Client:
     def click_stop(self):
         self.type = RequestType.STOP
         self.send_rtsp_request(RequestType.STOP)
-        t = threading.Thread(target=self.count_not_request_time, args=())
-        t.start()
-        
     def setup_connection(self):
         self.rtsp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rtsp_socket.connect((self.serverAddr, self.serverPort))
@@ -195,6 +194,9 @@ class Client:
                                 self.reset()
                                 self.display_cancel()
                                 break
+                            if self.state == State.READY:
+                                t = threading.Thread(target=self.count_not_request_time, args=())
+                                t.start()
 
     def receive_rtp_packet(self):
         while True:
@@ -243,6 +245,7 @@ class Client:
             print(count) #count time :))
             time.sleep(1)
             count += 1
-            if count >=50:
+            if count >=10:
+                self.last_requesttype = RequestType.TEARDOWN
                 self.send_rtsp_request(RequestType.TEARDOWN)
-        exit()
+                break
