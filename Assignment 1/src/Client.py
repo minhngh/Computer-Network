@@ -113,7 +113,6 @@ class Client:
         if requestType == RequestType.DESCRIBER:
             if self.event:
                 if not self.event.is_alive():
-                    self.event = threading.Thread(target=self.process_rtsp_request)
                     self.event.start()
             else:
                 self.event = threading.Thread(target = self.process_rtsp_request)
