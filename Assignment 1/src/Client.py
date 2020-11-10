@@ -18,10 +18,11 @@ class RequestType(Enum):
     PLAY = 1
     PAUSE = 2
     TEARDOWN = 3
+    DESCRIBER = 4
 
 
 class Client:
-    NUMBER_BUTTONS = 4
+    NUMBER_BUTTONS = 5
     PADX = 5
     PADY = 7
     RTP_BUFFER_SIZE = 15 * 1024
@@ -40,10 +41,20 @@ class Client:
         self.timeline = 0
         self.count_sended = 0    #server will send this value
         self.length_sended = 0   #server will send this value
+
+        self.type = RequestType.SETUP
+        self.event = None
+        self.cseq = 0
+
     def init_ui(self):
         self.draw_frame()
         self.draw_statitics()
         self.draw_buttons()
+        self.draw_describer()
+
+    def draw_describer(self):
+        self.describer = Label(self.master)
+        self.describer.pack(fill=X)
     def draw_frame(self):
         self.label_video = Label(self.master)
         self.label_video.pack(fill = BOTH, expand = True)
@@ -55,29 +66,39 @@ class Client:
     def draw_statitics(self):
         # if sended != 0:
         self.statitics = Label(self.master)
-        self.statitics.pack(fill = X, side = BOTTOM)
+        self.statitics.pack(fill = X)
         
     def draw_buttons(self):
         self.btn_setup = Button(self.frame_button, text = 'Setup', command = self.click_setup)
         self.btn_play = Button(self.frame_button, text = 'Play', command = self.click_play)
         self.btn_pause = Button(self.frame_button, text = 'Pause', command = self.click_pause)
         self.btn_teardown = Button(self.frame_button, text = 'Teardown', command = self.click_teardown)
+        self.btn_describer = Button(self.frame_button, text='Describer', command=self.click_describer)
 
-        self.btn_setup.grid(row = 0, column = 0, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
-        self.btn_play.grid(row = 0, column = 1, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
-        self.btn_pause.grid(row = 0, column = 2, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)        
-        self.btn_teardown.grid(row = 0, column = 3, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+        self.btn_setup.grid(row = 0, column = 1, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+        self.btn_play.grid(row = 0, column = 2, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+        self.btn_pause.grid(row = 0, column = 3, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+        self.btn_teardown.grid(row = 0, column = 4, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+        self.btn_describer.grid(row=0, column=0, sticky='EW', padx=Client.PADX, pady=Client.PADY)
 
-    def click_setup(self): 
+    def click_describer(self):
+        self.type = RequestType.DESCRIBER
+        self.send_rtsp_request(RequestType.DESCRIBER)
+
+    def click_setup(self):
+        self.type = RequestType.SETUP
         if self.state == State.INIT:
             self.send_rtsp_request(RequestType.SETUP)
     def click_play(self):
+        self.type = RequestType.PLAY
         if self.state == State.READY:
             self.send_rtsp_request(RequestType.PLAY)
-    def click_pause(self): 
+    def click_pause(self):
+        self.type = RequestType.PAUSE
         if self.state == State.PLAYING:
             self.send_rtsp_request(RequestType.PAUSE)
-    def click_teardown(self): 
+    def click_teardown(self):
+        self.type = RequestType.TEARDOWN
         if self.state == State.READY or self.state == State.PLAYING:
             self.send_rtsp_request(RequestType.TEARDOWN)
     
@@ -89,9 +110,25 @@ class Client:
         self.last_requesttype = requestType
         if self.rtsp_socket is None:
             self.setup_connection()
-        if requestType == RequestType.SETUP:
-            threading.Thread(target = self.process_rtsp_request).start()
-            self.cseq = 1
+        if requestType == RequestType.DESCRIBER:
+            if self.event:
+                if not self.event.is_alive():
+                    self.event = threading.Thread(target=self.process_rtsp_request)
+                    self.event.start()
+            else:
+                self.event = threading.Thread(target = self.process_rtsp_request)
+                self.event.start()
+
+            self.cseq = self.cseq + 1
+            request = "DESCRIBER " + str(self.fileName) +  " RTSP/1.0"+ "\n"+\
+                    "CSeq: " + str(self.cseq) +"\n"+\
+                'Port: '+str(self.serverPort) + ' IP: '+ str(self.serverAddr)
+
+        elif requestType == RequestType.SETUP:
+            self.event = threading.Thread(target = self.process_rtsp_request)
+            if not self.event.is_alive():
+                self.event.start()
+            self.cseq = self.cseq + 1
             request = f'SETUP {self.fileName} RTSP/1.0\nCSeq: {self.cseq} \nTransport: RTP/UDP; client_port= {self.rtpPort}'
         elif requestType == RequestType.PLAY:
             self.cseq += 1
@@ -115,28 +152,33 @@ class Client:
         while True:
             data = self.rtsp_socket.recv(Client.RTSP_BUFFER_SIZE).decode()
             if data:
-                request = data.split('\n')
-                print(request)
-                seqNum = int(request[1].split()[1])
-                if seqNum == self.cseq:
-                    sessionId = int(request[-1].split()[1])
-                    if self.sessionId is None:
-                        self.sessionId = sessionId
-                    status_code = int(request[0].split()[1])
-                    if self.sessionId == sessionId and status_code == 200:
-                        if self.last_requesttype == RequestType.SETUP:
-                            self.open_rtp_port()
-                            self.state = State.READY
-                        elif self.last_requesttype == RequestType.PLAY:
-                            threading.Thread(target = self.receive_rtp_packet).start()
-                            self.state = State.PLAYING
-                        elif self.last_requesttype == RequestType.PAUSE:
-                            self.state = State.READY
-                        elif self.last_requesttype == RequestType.TEARDOWN:
-                            self.state = State.INIT
-                            self.reset()
-                            self.display_cancel()
-                            break
+                if self.type == RequestType.DESCRIBER:
+                    print(data)
+                    self.describer['text'] = '*****Describer Info*****\n' + data
+                else:
+                    request = data.split('\n')
+                    print(request)
+                    seqNum = int(request[1].split()[1])
+                    if seqNum == self.cseq:
+                        sessionId = int(request[-1].split()[1])
+                        if self.sessionId is None:
+                            self.sessionId = sessionId
+                        status_code = int(request[0].split()[1])
+                        if self.sessionId == sessionId and status_code == 200:
+                            if self.last_requesttype == RequestType.SETUP:
+                                self.open_rtp_port()
+                                self.state = State.READY
+                            elif self.last_requesttype == RequestType.PLAY:
+                                threading.Thread(target = self.receive_rtp_packet).start()
+                                self.state = State.PLAYING
+                            elif self.last_requesttype == RequestType.PAUSE:
+                                self.state = State.READY
+                            elif self.last_requesttype == RequestType.TEARDOWN:
+                                self.describer['text'] = ''
+                                self.state = State.INIT
+                                self.reset()
+                                self.display_cancel()
+                                break
 
     def receive_rtp_packet(self):
         while True:

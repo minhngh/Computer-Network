@@ -3,12 +3,14 @@ import sys, traceback, threading, socket
 
 from VideoStream import VideoStream
 from RtpPacket import RtpPacket
+import os
 
 class ServerWorker:
 	SETUP = 'SETUP'
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
+	DESCRIBER = 'DESCRIBER'
 	
 	INIT = 0
 	READY = 1
@@ -30,8 +32,9 @@ class ServerWorker:
 	def recvRtspRequest(self):
 		"""Receive RTSP request from the client."""
 		connSocket = self.clientInfo['rtspSocket'][0]
-		while True:            
-			data = connSocket.recv(256)
+		while True:
+			#Change from 256 to 512
+			data = connSocket.recv(512)
 			if data:
 				print("Data received:\n" + data.decode("utf-8"))
 				self.processRtspRequest(data.decode("utf-8"))
@@ -48,7 +51,16 @@ class ServerWorker:
 		
 		# Get the RTSP sequence number 
 		seq = request[1].split(' ')
-		
+
+		if requestType == self.DESCRIBER:
+			if self.state == self.INIT:
+				print("processing DESCRIBER\n")
+				port = request[2].split(' ')[1]
+				address = request[2].split(' ')[3]
+				try:
+					self.replyRtspDescriber(self.OK_200, seq[1], filename, port, address)
+				except IOError:
+					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
 		# Process SETUP request
 		if requestType == self.SETUP:
 			if self.state == self.INIT:
@@ -174,6 +186,30 @@ class ServerWorker:
 			# 	length = sum(self.clientInfo['framelength'])
 			# 	reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\nSended: ' + str(len(self.clientInfo['sended'])) + '\nLength: ' + str(length) + '\nSession: ' + str(self.clientInfo['session']) 
 			
+			connSocket = self.clientInfo['rtspSocket'][0]
+			connSocket.send(reply.encode())
+
+		# Error messages
+		elif code == self.FILE_NOT_FOUND_404:
+			print("404 NOT FOUND")
+		elif code == self.CON_ERR_500:
+			print("500 CONNECTION ERROR")
+
+
+	def replyRtspDescriber(self,code,seq, filename, port, address):
+		if code == self.OK_200:
+			# print("200 OK")
+			file_stats = os.stat(filename)
+
+			reply = 'RTSP/1.0 200 OK\nCSeq: ' + seq + '\n' + \
+			'Content-Base: ' + str(filename) + '\n' + 'Content-Type: application/sdp\n'+\
+			'Content-Length: ' + str(file_stats.st_size)+ '\n\n'+ \
+			'm=video '+ port + ' RTP/AVP 26\n'+ \
+			'c=IN IP4 ' + address + '\n'+\
+			'a=rtpmap:26 JPEG/90000' +'\n'+\
+			"""a=StreamName:string;"hinted video track" """
+
+
 			connSocket = self.clientInfo['rtspSocket'][0]
 			connSocket.send(reply.encode())
 
