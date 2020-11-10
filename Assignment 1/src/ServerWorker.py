@@ -9,7 +9,7 @@ class ServerWorker:
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
-	
+	STOP = 'STOP'
 	INIT = 0
 	READY = 1
 	PLAYING = 2
@@ -110,7 +110,15 @@ class ServerWorker:
 			if self.clientInfo.get('rtpSocket', False):
 				self.clientInfo['rtpSocket'].close()
 			self.state = self.INIT
+		elif requestType == self.STOP:
+			if self.state == self.PLAYING:
+				print("processing STOP\n")
+				self.state = self.READY
+				
+				self.clientInfo['event'].set()
 			
+				self.replyRtsp(self.OK_200, seq[1])
+				self.clientInfo['videoStream'].reset()
 	def sendRtp(self):
 		"""Send RTP packets over UDP."""
 		while True:
