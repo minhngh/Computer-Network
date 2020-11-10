@@ -96,11 +96,11 @@ class Client:
         if self.state == State.INIT:
             self.send_rtsp_request(RequestType.SETUP)
     def click_play(self):
-        if self.state == State.INIT:
-            self.send_rtsp_request(RequestType.SETUP)
+        if self.sessionId == None:
+            self.click_setup()
         self.type = RequestType.PLAY
         if self.state == State.READY:
-            self.send_rtsp_request(RequestType.PLAY)
+            self.send_rtsp_request(RequestType.PLAY)   
     def click_pause(self):
         self.type = RequestType.PAUSE
         if self.state == State.PLAYING:
@@ -181,6 +181,9 @@ class Client:
                                 self.open_rtp_port()
                                 self.state = State.READY
                             elif self.last_requesttype == RequestType.PLAY:
+                                # if self.sessionId is None:
+                                #     self.open_rtp_port()
+                                #     self.state = State.READY
                                 threading.Thread(target = self.receive_rtp_packet).start()
                                 self.state = State.PLAYING
                             elif self.last_requesttype == RequestType.PAUSE:
@@ -188,15 +191,14 @@ class Client:
                             elif self.last_requesttype == RequestType.STOP:
                                 self.state = State.READY
                                 self.timeline = 0
+                                t = threading.Thread(target=self.count_not_request_time, args=())
+                                t.start()
                             elif self.last_requesttype == RequestType.TEARDOWN:
                                 self.describer['text'] = ''
                                 self.state = State.INIT
                                 self.reset()
                                 self.display_cancel()
                                 break
-                            if self.state == State.READY:
-                                t = threading.Thread(target=self.count_not_request_time, args=())
-                                t.start()
 
     def receive_rtp_packet(self):
         while True:
@@ -235,6 +237,7 @@ class Client:
         self.timeline = 0
         self.count_received = 0
         self.statitics.config(text = "")
+        self.state = State.INIT
     def display_cancel(self):
         showinfo('info', 'The video is cancelled')
         # Clear frame being displayed
