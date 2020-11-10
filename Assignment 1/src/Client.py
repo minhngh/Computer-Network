@@ -19,6 +19,7 @@ class RequestType(Enum):
     PAUSE = 2
     TEARDOWN = 3
     DESCRIBER = 4
+    STOP = 10
 
 
 class Client:
@@ -41,10 +42,11 @@ class Client:
         self.timeline = 0
         self.count_sended = 0    #server will send this value
         self.length_sended = 0   #server will send this value
-
         self.type = RequestType.SETUP
         self.event = None
         self.cseq = 0
+
+        self.send_rtsp_request(RequestType.SETUP)
 
     def init_ui(self):
         self.draw_frame()
@@ -69,17 +71,21 @@ class Client:
         self.statitics.pack(fill = X)
         
     def draw_buttons(self):
-        self.btn_setup = Button(self.frame_button, text = 'Setup', command = self.click_setup)
+        #self.btn_setup = Button(self.frame_button, text = 'Setup', command = self.click_setup)
         self.btn_play = Button(self.frame_button, text = 'Play', command = self.click_play)
         self.btn_pause = Button(self.frame_button, text = 'Pause', command = self.click_pause)
-        self.btn_teardown = Button(self.frame_button, text = 'Teardown', command = self.click_teardown)
+        #self.btn_teardown = Button(self.frame_button, text = 'Teardown', command = self.click_teardown)
         self.btn_describer = Button(self.frame_button, text='Describer', command=self.click_describer)
+        self.btn_stop = Button(self.frame_button, text = 'Stop', command = self.click_stop)
 
-        self.btn_setup.grid(row = 0, column = 1, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
-        self.btn_play.grid(row = 0, column = 2, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
-        self.btn_pause.grid(row = 0, column = 3, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
-        self.btn_teardown.grid(row = 0, column = 4, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+
+        #self.btn_setup.grid(row = 0, column = 1, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+        self.btn_play.grid(row = 0, column = 1, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+        self.btn_pause.grid(row = 0, column = 2, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+        #self.btn_teardown.grid(row = 0, column = 4, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
         self.btn_describer.grid(row=0, column=0, sticky='EW', padx=Client.PADX, pady=Client.PADY)
+        self.btn_stop.grid(row = 0, column = 3, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
+
 
     def click_describer(self):
         self.type = RequestType.DESCRIBER
@@ -101,7 +107,12 @@ class Client:
         self.type = RequestType.TEARDOWN
         if self.state == State.READY or self.state == State.PLAYING:
             self.send_rtsp_request(RequestType.TEARDOWN)
-    
+    def click_stop(self):
+        self.type = RequestType.STOP
+        self.send_rtsp_request(RequestType.STOP)
+        t = threading.Thread(target=self.count_not_request_time, args=())
+        t.start()
+        
     def setup_connection(self):
         self.rtsp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rtsp_socket.connect((self.serverAddr, self.serverPort))
@@ -138,6 +149,9 @@ class Client:
         elif requestType == RequestType.TEARDOWN:
             self.cseq += 1
             request = f'TEARDOWN {self.fileName} RTSP/1.0\nCseq: {self.cseq}\nSession: {self.sessionId}'
+        elif requestType == RequestType.STOP:
+            self.cseq += 1
+            request = f'STOP {self.fileName} RTSP/1.0\nCseq: {self.cseq}\nSession: {self.sessionId}'
         self.rtsp_socket.send(request.encode())
     def open_rtp_port(self):
         self.rtp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -172,6 +186,9 @@ class Client:
                                 self.state = State.PLAYING
                             elif self.last_requesttype == RequestType.PAUSE:
                                 self.state = State.READY
+                            elif self.last_requesttype == RequestType.STOP:
+                                self.state = State.READY
+                                self.timeline = 0
                             elif self.last_requesttype == RequestType.TEARDOWN:
                                 self.describer['text'] = ''
                                 self.state = State.INIT
@@ -220,3 +237,12 @@ class Client:
         showinfo('info', 'The video is cancelled')
         # Clear frame being displayed
         self.label_video.image = None
+    def count_not_request_time(self):
+        count = 0
+        while self.state == State.READY:
+            print(count) #count time :))
+            time.sleep(1)
+            count += 1
+            if count >=50:
+                self.send_rtsp_request(RequestType.TEARDOWN)
+        exit()
