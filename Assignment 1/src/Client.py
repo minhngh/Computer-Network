@@ -174,6 +174,9 @@ class Client:
                                 self.reset()
                                 self.display_cancel()
                                 break
+                            if self.state == State.READY:
+                                t = threading.Thread(target=self.count_not_request_time, args=())
+                                t.start()
 
     def receive_rtp_packet(self):
         while True:
