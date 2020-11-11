@@ -18,11 +18,7 @@ class RequestType(Enum):
     PLAY = 1
     PAUSE = 2
     TEARDOWN = 3
-
     DESCRIBE = 4
-
-    STOP = 10
-
 
 
 class Client:
@@ -45,11 +41,10 @@ class Client:
         self.timeline = 0
         self.count_sended = 0    #server will send this value
         self.length_sended = 0   #server will send this value
+
         self.type = RequestType.SETUP
         self.event = None
         self.cseq = 0
-
-        self.send_rtsp_request(RequestType.SETUP)
 
     def init_ui(self):
         self.draw_frame()
@@ -67,17 +62,16 @@ class Client:
         self.frame_button.pack(fill = X, side = BOTTOM)
         for i in range(Client.NUMBER_BUTTONS):
             self.frame_button.columnconfigure(i, weight = 1)
-    
+
     def draw_statitics(self):
         # if sended != 0:
         self.statitics = Label(self.master)
         self.statitics.pack(fill = X)
-        
+
     def draw_buttons(self):
-        #self.btn_setup = Button(self.frame_button, text = 'Setup', command = self.click_setup)
+        self.btn_setup = Button(self.frame_button, text = 'Setup', command = self.click_setup)
         self.btn_play = Button(self.frame_button, text = 'Play', command = self.click_play)
         self.btn_pause = Button(self.frame_button, text = 'Pause', command = self.click_pause)
-
         self.btn_teardown = Button(self.frame_button, text = 'Teardown', command = self.click_teardown)
         self.btn_describe = Button(self.frame_button, text='Describe', command=self.click_describe)
 
@@ -87,21 +81,18 @@ class Client:
         self.btn_teardown.grid(row = 0, column = 4, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
         self.btn_describe.grid(row=0, column=0, sticky='EW', padx=Client.PADX, pady=Client.PADY)
 
-
     def click_describe(self):
-        self.type = RequestType.describe
-        self.send_rtsp_request(RequestType.describe)
+        self.type = RequestType.DESCRIBE
+        self.send_rtsp_request(RequestType.DESCRIBE)
 
     def click_setup(self):
         self.type = RequestType.SETUP
         if self.state == State.INIT:
             self.send_rtsp_request(RequestType.SETUP)
     def click_play(self):
-        if self.sessionId == None:
-            self.click_setup()
         self.type = RequestType.PLAY
         if self.state == State.READY:
-            self.send_rtsp_request(RequestType.PLAY)   
+            self.send_rtsp_request(RequestType.PLAY)
     def click_pause(self):
         self.type = RequestType.PAUSE
         if self.state == State.PLAYING:
@@ -110,9 +101,7 @@ class Client:
         self.type = RequestType.TEARDOWN
         if self.state == State.READY or self.state == State.PLAYING:
             self.send_rtsp_request(RequestType.TEARDOWN)
-    def click_stop(self):
-        self.type = RequestType.STOP
-        self.send_rtsp_request(RequestType.STOP)
+
     def setup_connection(self):
         self.rtsp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rtsp_socket.connect((self.serverAddr, self.serverPort))
@@ -121,7 +110,7 @@ class Client:
         self.last_requesttype = requestType
         if self.rtsp_socket is None:
             self.setup_connection()
-        if requestType == RequestType.describe:
+        if requestType == RequestType.DESCRIBE:
             if self.event:
                 if not self.event.is_alive():
                     self.event.start()
@@ -149,9 +138,6 @@ class Client:
         elif requestType == RequestType.TEARDOWN:
             self.cseq += 1
             request = f'TEARDOWN {self.fileName} RTSP/1.0\nCseq: {self.cseq}\nSession: {self.sessionId}'
-        elif requestType == RequestType.STOP:
-            self.cseq += 1
-            request = f'STOP {self.fileName} RTSP/1.0\nCseq: {self.cseq}\nSession: {self.sessionId}'
         self.rtsp_socket.send(request.encode())
     def open_rtp_port(self):
         self.rtp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -167,7 +153,7 @@ class Client:
             if data:
                 if self.type == RequestType.DESCRIBE:
                     print(data)
-                    self.describe['text'] = '*****DESCRIBE Info*****\n' + data
+                    self.describe['text'] = '*****Describe Info*****\n' + data
                 else:
                     request = data.split('\n')
                     print(request)
@@ -182,18 +168,10 @@ class Client:
                                 self.open_rtp_port()
                                 self.state = State.READY
                             elif self.last_requesttype == RequestType.PLAY:
-                                # if self.sessionId is None:
-                                #     self.open_rtp_port()
-                                #     self.state = State.READY
                                 threading.Thread(target = self.receive_rtp_packet).start()
                                 self.state = State.PLAYING
                             elif self.last_requesttype == RequestType.PAUSE:
                                 self.state = State.READY
-                            elif self.last_requesttype == RequestType.STOP:
-                                self.state = State.READY
-                                self.timeline = 0
-                                t = threading.Thread(target=self.count_not_request_time, args=())
-                                t.start()
                             elif self.last_requesttype == RequestType.TEARDOWN:
                                 self.describe['text'] = ''
                                 self.state = State.INIT
@@ -217,8 +195,8 @@ class Client:
                     text = ""
                     if sended != 0:
                         text = '\tSTATITICS'
-                        text += '\nLoss rate = {:.2f}%'.format((1 - (self.count_received-1)/sended)*100) 
-                        text += '\nVideo data rate = {:.2f} (bps)'.format(size/self.timeline) 
+                        text += '\nLoss rate = {:.2f}%'.format((1 - (self.count_received-1)/sended)*100)
+                        text += '\nVideo data rate = {:.2f} (bps)'.format(size/self.timeline)
                         text += f'\nNumber of frames = {sended}'
                     self.statitics.config(text = text,justify = 'left')
                     # self.statitics.config(text = str(end-start))
@@ -238,18 +216,7 @@ class Client:
         self.timeline = 0
         self.count_received = 0
         self.statitics.config(text = "")
-        self.state = State.INIT
     def display_cancel(self):
         showinfo('info', 'The video is cancelled')
         # Clear frame being displayed
         self.label_video.image = None
-    def count_not_request_time(self):
-        count = 0
-        while self.state == State.READY:
-            print(count) #count time :))
-            time.sleep(1)
-            count += 1
-            if count >=10:
-                self.last_requesttype = RequestType.TEARDOWN
-                self.send_rtsp_request(RequestType.TEARDOWN)
-                break
