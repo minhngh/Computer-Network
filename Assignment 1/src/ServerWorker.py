@@ -10,8 +10,12 @@ class ServerWorker:
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
+
 	DESCRIBE = 'DESCRIBE'
 	
+
+	STOP = 'STOP'
+
 	INIT = 0
 	READY = 1
 	PLAYING = 2
@@ -108,7 +112,17 @@ class ServerWorker:
 				self.clientInfo['event'].set()
 			
 				self.replyRtsp(self.OK_200, seq[1])
-		
+
+		elif requestType == self.STOP:
+			if self.state == self.PLAYING:
+				print("processing STOP\n")
+				self.state = self.READY
+				
+				self.clientInfo['event'].set()
+			
+				self.replyRtsp(self.OK_200, seq[1])
+				self.clientInfo['videoStream'].reset()
+
 		# Process TEARDOWN request
 		elif requestType == self.TEARDOWN:
 			print("processing TEARDOWN\n")
