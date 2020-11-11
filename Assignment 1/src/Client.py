@@ -111,12 +111,8 @@ class Client:
         if self.rtsp_socket is None:
             self.setup_connection()
         if requestType == RequestType.DESCRIBE:
-            if self.event:
-                if not self.event.is_alive():
-                    self.event.start()
-            else:
-                self.event = threading.Thread(target = self.process_rtsp_request)
-                self.event.start()
+            self.event = threading.Thread(target = self.process_rtsp_request)
+            self.event.start()
 
             self.cseq = self.cseq + 1
             request = "DESCRIBE " + str(self.fileName) +  " RTSP/1.0"+ "\n"+\
@@ -125,8 +121,8 @@ class Client:
 
         elif requestType == RequestType.SETUP:
             self.event = threading.Thread(target = self.process_rtsp_request)
-            if not self.event.is_alive():
-                self.event.start()
+
+            self.event.start()
             self.cseq = self.cseq + 1
             request = f'SETUP {self.fileName} RTSP/1.0\nCSeq: {self.cseq} \nTransport: RTP/UDP; client_port= {self.rtpPort}'
         elif requestType == RequestType.PLAY:

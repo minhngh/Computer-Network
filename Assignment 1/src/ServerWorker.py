@@ -55,16 +55,14 @@ class ServerWorker:
 		
 		# Get the RTSP sequence number 
 		seq = request[1].split(' ')
-
 		if requestType == self.DESCRIBE:
-			if self.state == self.INIT:
-				print("processing DESCRIBE\n")
-				port = request[2].split(' ')[1]
-				address = request[2].split(' ')[3]
-				try:
-					self.replyRtspDescribe(self.OK_200, seq[1], filename, port, address)
-				except IOError:
-					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
+			print("processing DESCRIBE\n")
+			port = request[2].split(' ')[1]
+			address = request[2].split(' ')[3]
+			try:
+				self.replyRtspDescribe(self.OK_200, seq[1], filename, port, address)
+			except IOError:
+				self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
 		# Process SETUP request
 		if requestType == self.SETUP:
 			if self.state == self.INIT:
