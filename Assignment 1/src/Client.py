@@ -19,7 +19,7 @@ class RequestType(Enum):
     PAUSE = 2
     TEARDOWN = 3
     DESCRIBE = 4
-
+    STOP = 10
 
 class Client:
     NUMBER_BUTTONS = 5
@@ -90,6 +90,8 @@ class Client:
         if self.state == State.INIT:
             self.send_rtsp_request(RequestType.SETUP)
     def click_play(self):
+        if self.state == State.INIT:
+            self.send_rtsp_request(RequestType.SETUP)
         self.type = RequestType.PLAY
         if self.state == State.READY:
             self.send_rtsp_request(RequestType.PLAY)
@@ -168,6 +170,9 @@ class Client:
                                 self.state = State.PLAYING
                             elif self.last_requesttype == RequestType.PAUSE:
                                 self.state = State.READY
+                            elif self.last_requesttype == RequestType.STOP:
+                                self.state = State.READY
+                                self.timeline = 0
                             elif self.last_requesttype == RequestType.TEARDOWN:
                                 self.describe['text'] = ''
                                 self.state = State.INIT
@@ -219,3 +224,13 @@ class Client:
         showinfo('info', 'The video is cancelled')
         # Clear frame being displayed
         self.label_video.image = None
+    def count_not_request_time(self):
+        count = 0
+        while self.state == State.READY:
+            print(count) #count time :))
+            time.sleep(1)
+            count += 1
+            if count >=10:
+                self.last_requesttype = RequestType.TEARDOWN
+                self.send_rtsp_request(RequestType.TEARDOWN)
+                break
