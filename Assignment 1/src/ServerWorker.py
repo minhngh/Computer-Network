@@ -10,7 +10,7 @@ class ServerWorker:
 	PLAY = 'PLAY'
 	PAUSE = 'PAUSE'
 	TEARDOWN = 'TEARDOWN'
-	DESCRIBER = 'DESCRIBER'
+	DESCRIBE = 'DESCRIBE'
 	STOP = 'STOP'
 	INIT = 0
 	READY = 1
@@ -34,7 +34,7 @@ class ServerWorker:
 		connSocket = self.clientInfo['rtspSocket'][0]
 		while True:
 			#Change from 256 to 512
-			data = connSocket.recv(512)
+			data = connSocket.recv(256)
 			if data:
 				print("Data received:\n" + data.decode("utf-8"))
 				self.processRtspRequest(data.decode("utf-8"))
@@ -52,15 +52,15 @@ class ServerWorker:
 		# Get the RTSP sequence number 
 		seq = request[1].split(' ')
 
-		if requestType == self.DESCRIBER:
-			if self.state == self.INIT:
-				print("processing DESCRIBER\n")
-				port = request[2].split(' ')[1]
-				address = request[2].split(' ')[3]
-				try:
-					self.replyRtspDescriber(self.OK_200, seq[1], filename, port, address)
-				except IOError:
-					self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
+		if requestType == self.DESCRIBE:
+			#if self.state == self.INIT:
+			print("processing DESCRIBER\n")
+			port = request[2].split(' ')[1]
+			address = request[2].split(' ')[3]
+			try:
+				self.replyRtspDescribe(self.OK_200, seq[1], filename, port, address)
+			except IOError:
+				self.replyRtsp(self.FILE_NOT_FOUND_404, seq[1])
 		# Process SETUP request
 		if requestType == self.SETUP:
 			if self.state == self.INIT:
@@ -206,7 +206,7 @@ class ServerWorker:
 			print("500 CONNECTION ERROR")
 
 
-	def replyRtspDescriber(self,code,seq, filename, port, address):
+	def replyRtspDescribe(self,code,seq, filename, port, address):
 		if code == self.OK_200:
 			# print("200 OK")
 			file_stats = os.stat(filename)

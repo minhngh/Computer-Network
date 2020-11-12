@@ -18,7 +18,7 @@ class RequestType(Enum):
     PLAY = 1
     PAUSE = 2
     TEARDOWN = 3
-    DESCRIBER = 4
+    DESCRIBE = 4
     STOP = 10
 
 
@@ -52,11 +52,11 @@ class Client:
         self.draw_frame()
         self.draw_statitics()
         self.draw_buttons()
-        self.draw_describer()
+        # self.draw_describe()
 
-    def draw_describer(self):
-        self.describer = Label(self.master)
-        self.describer.pack(fill=X)
+    # def draw_describe(self):
+    #     self.describe = Label(self.master)
+    #     self.describe.pack(fill=X)
     def draw_frame(self):
         self.label_video = Label(self.master)
         self.label_video.pack(fill = BOTH, expand = True)
@@ -75,7 +75,7 @@ class Client:
         self.btn_play = Button(self.frame_button, text = 'Play', command = self.click_play)
         self.btn_pause = Button(self.frame_button, text = 'Pause', command = self.click_pause)
         #self.btn_teardown = Button(self.frame_button, text = 'Teardown', command = self.click_teardown)
-        self.btn_describer = Button(self.frame_button, text='Describer', command=self.click_describer)
+        self.btn_describe = Button(self.frame_button, text='Describe', command=self.click_describe)
         self.btn_stop = Button(self.frame_button, text = 'Stop', command = self.click_stop)
 
 
@@ -83,13 +83,13 @@ class Client:
         self.btn_play.grid(row = 0, column = 1, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
         self.btn_pause.grid(row = 0, column = 2, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
         #self.btn_teardown.grid(row = 0, column = 4, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
-        self.btn_describer.grid(row=0, column=0, sticky='EW', padx=Client.PADX, pady=Client.PADY)
+        self.btn_describe.grid(row=0, column=0, sticky='EW', padx=Client.PADX, pady=Client.PADY)
         self.btn_stop.grid(row = 0, column = 3, sticky = 'EW', padx = Client.PADX, pady = Client.PADY)
 
 
-    def click_describer(self):
-        self.type = RequestType.DESCRIBER
-        self.send_rtsp_request(RequestType.DESCRIBER)
+    def click_describe(self):
+        self.type = RequestType.DESCRIBE
+        self.send_rtsp_request(RequestType.DESCRIBE)
 
     def click_setup(self):
         self.type = RequestType.SETUP
@@ -122,7 +122,7 @@ class Client:
         self.last_requesttype = requestType
         if self.rtsp_socket is None:
             self.setup_connection()
-        if requestType == RequestType.DESCRIBER:
+        if requestType == RequestType.DESCRIBE:
             if self.event:
                 if not self.event.is_alive():
                     self.event.start()
@@ -131,7 +131,7 @@ class Client:
                 self.event.start()
 
             self.cseq = self.cseq + 1
-            request = "DESCRIBER " + str(self.fileName) +  " RTSP/1.0"+ "\n"+\
+            request = "DESCRIBE " + str(self.fileName) +  " RTSP/1.0"+ "\n"+\
                     "CSeq: " + str(self.cseq) +"\n"+\
                 'Port: '+str(self.serverPort) + ' IP: '+ str(self.serverAddr)
 
@@ -166,9 +166,10 @@ class Client:
         while True:
             data = self.rtsp_socket.recv(Client.RTSP_BUFFER_SIZE).decode()
             if data:
-                if self.type == RequestType.DESCRIBER:
+                if self.type == RequestType.DESCRIBE:
                     print(data)
-                    self.describer['text'] = '*****Describer Info*****\n' + data
+                    showinfo("Describe Infomation", data)
+                    # self.describe['text'] = '*****Describe Info*****\n' + data
                 else:
                     request = data.split('\n')
                     print(request)
@@ -193,7 +194,7 @@ class Client:
                                 t = threading.Thread(target=self.count_not_request_time, args=())
                                 t.start()
                             elif self.last_requesttype == RequestType.TEARDOWN:
-                                self.describer['text'] = ''
+                                #self.describe['text'] = ''
                                 self.state = State.INIT
                                 self.reset()
                                 self.display_cancel()
