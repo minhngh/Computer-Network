@@ -45,6 +45,12 @@ class Client:
         self.type = RequestType.SETUP
         self.event = None
         self.cseq = 0
+        self.start = 0
+        self.begin_pause = 0
+        self.pause_time = 0
+        self.is_pausing = False
+        self.receive_frame = []
+        self.loss = 0
 
         self.send_rtsp_request(RequestType.SETUP) #send request Setup when init
 
@@ -201,24 +207,35 @@ class Client:
                                 break
 
     def receive_rtp_packet(self):
+        if self.start == 0:
+            self.start = time.time()
         while True:
-            start = time.time()
             try:
                 data, clientAddr = self.rtp_socket.recvfrom(Client.RTP_BUFFER_SIZE)
                 if data:
                     header, payload = RtpPacket.decode(data)
                     statitics = payload[:56]
-                    end = time.time()
+                    now = time.time()
                     size = int.from_bytes(statitics[:28],'big')
                     sended = int.from_bytes(statitics[28:],'big')
+
+                    frame_nbr = header[2]*256 + header[3]
+                    self.receive_frame.append(frame_nbr)
+                    if frame_nbr < max(self.receive_frame):
+                        self.loss += 1
+
                     self.count_received += 1
-                    self.timeline += (end - start)
+                    if self.is_pausing:
+                        self.is_pausing = False
+                        self.pause_time += now - self.begin_pause
+                    self.timeline = (now - self.start) - self.pause_time
+
                     text = ""
                     if sended != 0:
                         text = '\tSTATITICS'
-                        text += '\nLoss rate = {:.2f}%'.format((1 - (self.count_received-1)/sended)*100) 
+                        text += '\nLoss rate = {:.2f}%'.format(self.loss/sended*100) 
                         text += '\nVideo data rate = {:.2f} (bps)'.format(size/self.timeline) 
-                        text += f'\nNumber of frames = {sended}'
+                        text += f'\nNumber of frames = {sended} {frame_nbr}'
                     self.statitics.config(text = text,justify = 'left')
                     # self.statitics.config(text = str(end-start))
                     payload = payload[56:]
@@ -229,6 +246,8 @@ class Client:
             except:
                 if self.last_requesttype == RequestType.PAUSE:
                     print('[LOG]', 'Video is paused')
+                    self.begin_pause = time.time()
+                    self.is_pausing = True
                 break
     def reset(self):
         self.rtp_socket.close()
