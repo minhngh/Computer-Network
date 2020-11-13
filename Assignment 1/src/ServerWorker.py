@@ -169,6 +169,11 @@ class ServerWorker:
 					#print('-'*60)
 					#traceback.print_exc(file=sys.stdout)
 					#print('-'*60)
+			else: 
+				if self.state == self.PLAYING:
+					self.clientInfo['videoStream'].reset()
+					self.state = self.READY
+					break
 
 	def makeRtp(self, payload, frameNbr):
 		"""RTP-packetize the video data."""

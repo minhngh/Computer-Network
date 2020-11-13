@@ -51,7 +51,7 @@ class Client:
         self.is_pausing = False
         self.receive_frame = []
         self.loss = 0
-
+        self.has_play = False
         self.send_rtsp_request(RequestType.SETUP) #send request Setup when init
 
     def init_ui(self):
@@ -94,32 +94,35 @@ class Client:
 
 
     def click_describe(self):
-        self.type = RequestType.DESCRIBE
-        self.send_rtsp_request(RequestType.DESCRIBE)
+        if self.rtsp_socket:
+            self.type = RequestType.DESCRIBE
+            self.send_rtsp_request(RequestType.DESCRIBE)
 
     def click_setup(self):
-        self.type = RequestType.SETUP
         if self.state == State.INIT:
+            self.type = RequestType.SETUP
             self.send_rtsp_request(RequestType.SETUP)
     def click_play(self):
         if self.state == State.INIT:
             yesno = askyesno('Connection Over Time', 'Do you want to reconnect?') # Yes / No
             if yesno == True:
                 self.send_rtsp_request(RequestType.SETUP)
-        self.type = RequestType.PLAY
         if self.state == State.READY:
+            self.type = RequestType.PLAY
+            self.has_play = True
             self.send_rtsp_request(RequestType.PLAY)
     def click_pause(self):
-        self.type = RequestType.PAUSE
         if self.state == State.PLAYING:
+            self.type = RequestType.PAUSE
             self.send_rtsp_request(RequestType.PAUSE)
     def click_teardown(self):
-        self.type = RequestType.TEARDOWN
         if self.state == State.READY or self.state == State.PLAYING:
+            self.type = RequestType.TEARDOWN
             self.send_rtsp_request(RequestType.TEARDOWN)
     def click_stop(self):
-        self.type = RequestType.STOP
-        self.send_rtsp_request(RequestType.STOP)
+        if self.state != State.INIT and self.has_play:
+            self.type = RequestType.STOP
+            self.send_rtsp_request(RequestType.STOP)
     def setup_connection(self):
         self.rtsp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rtsp_socket.connect((self.serverAddr, self.serverPort))
@@ -202,8 +205,9 @@ class Client:
                             elif self.last_requesttype == RequestType.TEARDOWN:
                                 #self.describe['text'] = ''
                                 self.state = State.INIT
-                                self.reset()
                                 self.display_cancel()
+                                self.reset()
+                                self.has_play = False
                                 break
 
     def receive_rtp_packet(self):
@@ -232,7 +236,7 @@ class Client:
 
                     text = ""
                     if sended != 0:
-                        text = '\tSTATITICS'
+                        text = '\tSTATISTICS'
                         text += '\nLoss rate = {:.2f}%'.format(self.loss/sended*100) 
                         text += '\nVideo data rate = {:.2f} (bps)'.format(size/self.timeline) 
                         text += f'\nNumber of frames = {sended}'
@@ -248,10 +252,16 @@ class Client:
                     print('[LOG]', 'Video is paused')
                     self.begin_pause = time.time()
                     self.is_pausing = True
+                elif self.state == State.PLAYING:
+                    self.display_cancel()
+                    self.statitics.config(text = "")
+                    self.state = State.READY
                 break
     def reset(self):
         self.rtp_socket.close()
-        self.rtsp_socket = None
+        self.rtsp_socket.shutdown(socket.SHUT_RDWR)
+        self.rtsp_socket.close()
+        self.rtp_socket = self.rtsp_socket = None
         self.sessionId = None
         self.timeline = 0
         self.count_received = 0
