@@ -200,6 +200,8 @@ class Client:
                                 self.state = State.READY
                                 self.timeline = 0
                                 self.receive_frame = []
+                                self.is_pausing = True
+                                self.begin_pause = time.time()
                                 t = threading.Thread(target=self.count_not_request_time, args=())
                                 t.start()
                             elif self.last_requesttype == RequestType.TEARDOWN:
@@ -231,7 +233,7 @@ class Client:
                         self.is_pausing = False
                         self.pause_time += now - self.begin_pause
                     self.timeline = (now - self.start) - self.pause_time
-
+                    
                     text = ""
                     if sended != 0:
                         text = '\tSTATISTICS'
