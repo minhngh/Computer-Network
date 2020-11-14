@@ -269,6 +269,7 @@ class Client:
         self.count_received = 0
         self.statitics.config(text = "")
         self.state = State.INIT
+        self.loss = 0
     def display_cancel(self):
         showinfo('info', 'The video is cancelled')
         # Clear frame being displayed
