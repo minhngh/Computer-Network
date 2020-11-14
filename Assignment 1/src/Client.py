@@ -258,6 +258,7 @@ class Client:
                     self.label_video.image = None
                     self.statitics.config(text = "")
                     self.state = State.READY
+                    self.receive_frame = []
                 break
     def reset(self):
         self.rtp_socket.close()
