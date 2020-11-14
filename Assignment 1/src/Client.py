@@ -253,7 +253,9 @@ class Client:
                     self.begin_pause = time.time()
                     self.is_pausing = True
                 elif self.state == State.PLAYING:
-                    self.display_cancel()
+                    showinfo('info', 'The video is ended')
+                    # Clear frame being displayed
+                    self.label_video.image = None
                     self.statitics.config(text = "")
                     self.state = State.READY
                 break
