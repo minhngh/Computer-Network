@@ -38,7 +38,6 @@ class Client:
         self.state = State.INIT
         self.setup_connection()
         self.init_ui()
-        self.count_received = 0        #total frame that client received
         self.timeline = 0
         self.count_sended = 0    #server will send this value
         self.length_sended = 0   #server will send this value
@@ -200,6 +199,7 @@ class Client:
                             elif self.last_requesttype == RequestType.STOP:
                                 self.state = State.READY
                                 self.timeline = 0
+                                self.receive_frame = []
                                 t = threading.Thread(target=self.count_not_request_time, args=())
                                 t.start()
                             elif self.last_requesttype == RequestType.TEARDOWN:
@@ -227,8 +227,6 @@ class Client:
                     self.receive_frame.append(frame_nbr)
                     if frame_nbr < max(self.receive_frame):
                         self.loss += 1
-
-                    self.count_received += 1
                     if self.is_pausing:
                         self.is_pausing = False
                         self.pause_time += now - self.begin_pause
@@ -266,10 +264,10 @@ class Client:
         self.rtp_socket = self.rtsp_socket = None
         self.sessionId = None
         self.timeline = 0
-        self.count_received = 0
         self.statitics.config(text = "")
         self.state = State.INIT
-        self.loss = 0
+        # self.loss = 0
+        self.receive_frame = []
     def display_cancel(self):
         showinfo('info', 'The video is cancelled')
         # Clear frame being displayed
@@ -277,10 +275,11 @@ class Client:
     def count_not_request_time(self):
         count = 0
         while self.state == State.READY:
-            print(count) #count time :))
+            print(str(9-count) + 's left to disconnect' ) #count time :))
             time.sleep(1)
             count += 1
             if count >=10:
+                print('Disconnect!')
                 self.last_requesttype = RequestType.TEARDOWN
                 self.send_rtsp_request(RequestType.TEARDOWN)
                 break
