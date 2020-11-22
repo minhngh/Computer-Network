@@ -39,6 +39,7 @@ class Client:
         self.setup_connection()
         self.init_ui()
         self.timeline = 0
+        self.total_size = 0
         self.count_sended = 0    #server will send this value
         self.length_sended = 0   #server will send this value
         self.type = RequestType.SETUP
@@ -198,6 +199,7 @@ class Client:
                                 self.state = State.READY
                             elif self.last_requesttype == RequestType.STOP:
                                 self.state = State.READY
+                                self.total_size = 0
                                 self.timeline = 0
                                 self.receive_frame = []
                                 self.is_pausing = True
@@ -220,10 +222,7 @@ class Client:
                 data, clientAddr = self.rtp_socket.recvfrom(Client.RTP_BUFFER_SIZE)
                 if data:
                     header, payload = RtpPacket.decode(data)
-                    statitics = payload[:56]
                     now = time.time()
-                    size = int.from_bytes(statitics[:28],'big')
-                    sended = int.from_bytes(statitics[28:],'big')
 
                     frame_nbr = header[2]*256 + header[3]
                     self.receive_frame.append(frame_nbr)
@@ -234,15 +233,14 @@ class Client:
                         self.pause_time += now - self.begin_pause
                     self.timeline = (now - self.start) - self.pause_time
                     
-                    text = ""
-                    if sended != 0:
-                        text = '\tSTATISTICS'
-                        text += '\nLoss rate = {:.2f}%'.format(self.loss/sended*100) 
-                        text += '\nVideo data rate = {:.2f} (bps)'.format(size/self.timeline) 
-                        text += f'\nNumber of frames = {sended}'
+                    self.total_size += len(payload)
+
+                    text = '\tSTATISTICS'
+                    text += '\nLoss rate = {:.2f}%'.format(self.loss/len(self.receive_frame)*100) 
+                    text += '\nVideo data rate = {:.2f} (bps)'.format(self.total_size/self.timeline) 
+                    text += f'\nNumber of frames = {len(self.receive_frame)}'
                     self.statitics.config(text = text,justify = 'left')
-                    # self.statitics.config(text = str(end-start))
-                    payload = payload[56:]
+
                     image = Image.open(io.BytesIO(payload))
                     imagetk = ImageTk.PhotoImage(image = image)
                     self.label_video.configure(image = imagetk)

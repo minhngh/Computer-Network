@@ -146,17 +146,6 @@ class ServerWorker:
 			if data: 
 				frameNumber = self.clientInfo['videoStream'].frameNbr()
 
-				if 'framelength' in self.clientInfo:
-					self.clientInfo['framelength'].append(framelength)
-				else: self.clientInfo['framelength'] = [framelength]
-
-				if 'sended' in self.clientInfo:
-					self.clientInfo['sended'].append(frameNumber)
-				else:
-					self.clientInfo['sended'] = []
-				size = sum(self.clientInfo['framelength']).to_bytes(28,'big')
-				count = len(self.clientInfo['sended']).to_bytes(28,'big')
-				data = size + count + data
 				# address = self.clientInfo['rtspSocket'][1][0]
 				# port = int(self.clientInfo['rtpPort'])
 				# self.clientInfo['rtpSocket'].sendto(self.makeRtp(data, frameNumber),(address,port))
